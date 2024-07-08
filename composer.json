@@ -1,0 +1,34 @@
+{
+    "name": "phputil/csrf",
+    "description": "CSRF middleware for phputil/router",
+    "type": "library",
+    "license": "MIT",
+    "scripts": {
+        "hooks": "captainhook install --only-enabled -n -g .git",
+        "test": "kahlan --cc=1",
+        "test2": "kahlan --reporter=verbose",
+        "cov": "kahlan --coverage",
+        "check": "phpstan analyze src",
+        "format": "php-cs-fixer fix --verbose && restage",
+        "req": "composer check-platform-reqs --no-dev --ansi"
+    },
+    "require-dev": {
+        "kahlan/kahlan": "^5.2",
+        "phputil/router": "^0.3.0",
+        "phpstan/phpstan": "^1.9",
+        "symfony/http-client": "^5.4",
+        "phputil/restage": "^0.4.1",
+        "friendsofphp/php-cs-fixer": "^3.59",
+        "captainhook/captainhook": "^5.23"
+    },
+    "autoload": {
+        "psr-4": {
+            "phputil\\csrf\\": [
+                "src/",
+                "src/storage",
+                "src/strategy"
+            ]
+        },
+        "files": [ "src/csrf.php" ]
+    }
+}
