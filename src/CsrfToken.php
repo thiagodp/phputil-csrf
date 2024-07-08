@@ -9,7 +9,7 @@ class CsrfToken {
         $this->value = $value;
     }
 
-    public function hasAllValidCharacters() : bool {
+    public function hasAllValidCharacters(): bool {
         return preg_match( '/^[a-zA-Z0-9]+$/', $this->value );
     }
 

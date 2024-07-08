@@ -20,9 +20,9 @@ abstract class BaseCsrfStrategy implements CsrfStrategy {
     // Abstract methods
     //
 
-    public abstract function getToken( HttpRequest $req ): ?string;
+    abstract public function getToken( HttpRequest $req ): ?string;
 
-    public abstract function setToken( string $token, HttpResponse $res ): void;
+    abstract public function setToken( string $token, HttpResponse $res ): void;
 
     //
     // CsrfStrategy
@@ -64,7 +64,6 @@ abstract class BaseCsrfStrategy implements CsrfStrategy {
             $stop = true;
             return;
         }
-
 
         $options = $this->getOptions();
 
@@ -112,6 +111,5 @@ abstract class BaseCsrfStrategy implements CsrfStrategy {
         // Sets the token in the response
         $this->setToken( $token, $res );
     }
-
 
 }

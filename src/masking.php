@@ -3,14 +3,14 @@
 // Masking/unmasking functions inspired by https://github.com/slimphp/Slim-Csrf/blob/1.x/src/Guard.php
 //
 
-function maskToken( string $token ) : string {
+function maskToken( string $token ): string {
     // Key length must be the same as the token's length
     $key = random_bytes( strlen( $token ) );
     // Key XOR with the token
     return base64_encode( $key . ( $key ^ $token ) );
 }
 
-function unmaskToken(string $maskedToken): string {
+function unmaskToken( string $maskedToken ): string {
 
     $decoded = base64_decode( $maskedToken, true );
     if ( $decoded === false ) {

@@ -11,7 +11,6 @@ class CsrfOptions {
 
     public int $tokenLength = DEFAULT_TOKEN_LENGTH;
 
-
     public function fromArray( array $options ): CsrfOptions {
         $this->disableTokenMasking = $options[ 'disableTokenMasking' ] ?? false;
         $this->disableTokenRenewal = $options[ 'disableTokenRenewal' ] ?? false;

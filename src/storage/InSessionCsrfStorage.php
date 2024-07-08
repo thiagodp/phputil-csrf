@@ -31,7 +31,6 @@ class InSessionCsrfStorage implements CsrfStorage {
         $_SESSION[ $this->sessionKey ] = $token->value;
     }
 
-
     /** @inheritDoc */
     public function removeToken(): bool {
 
