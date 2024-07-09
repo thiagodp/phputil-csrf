@@ -100,12 +100,13 @@ abstract class BaseCsrfStrategy implements CsrfStrategy {
 
             $token = generateToken( $options->tokenLength );
 
+            // Store the new token
+            $this->getStorage()->saveToken( new CsrfToken( $token ) );
+
+            // Mask the token before sending it
             if ( ! $options->disableTokenMasking ) {
                 $token = maskToken( $token );
             }
-
-            // Store the new token
-            $this->getStorage()->saveToken( new CsrfToken( $token ) );
         }
 
         // Sets the token in the response
