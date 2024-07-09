@@ -44,21 +44,34 @@ $app->listen();
 function csrf( $options = [], CsrfStrategy $strategy = null, CsrfStorage $storage = null ): callable;
 ```
 
-Options are:
-- `disableTokenMasking` (bool, default `false`) indicates if token masking should be disabled. By default, the randomly-generated token is masked through a XOR operation with a random key and then converted to base64.
+Argument `$options` (array, default `[]`) can have the following keys:
+- `disableTokenMasking` (bool, default `false`) indicates if token masking should be disabled.
+    - Note: By default, the randomly-generated token is masked through a XOR operation with a random key and then converted to base64.
 - `disableTokenRenewal` (bool, default `false`) indicates if token renewal should be disabled.
-- `tokenLength` (int, default `20`) indicates the desired token length. Note that this is the UNMASKED token length.
+- `tokenLength` (int, default `20`) indicates the desired token length. Note that this is the **unmasked** token length.
 
-Available Strategies:
+### Available Strategies
+
+The following classes are available:
 
 - `CookieBasedCsrfStrategy`: uses cookies to send and receive the CSRF token. That's the default strategy.
+    - Its constructor receives two arguments, both optional:
+        - `$strategyOptions` (array, default `[]`) that can have:
+            - `"cookieName"`: the name of the CSRF cookie. By default, it is `csrf_token`.
+        - `$cookieOptions` (array, default `[]`) that can have the same options as PHP's [setcookie()](https://www.php.net/manual/en/function.setcookie).
 - `HeaderBasedCsrfStrategy`: uses HTTP headers to send and receive the CSRF token.
+    - Its constructor receives one argument, `$strategyOptions` (array, default `[]`), that is optional and can have:
+        - `"requestHeaderName"`: expected request header. By default it is `"X-CSRF-Token"`.
+        - `"responseHeaderName"`: produced response header. By default it is `"CSRF-Token"`.
 
 **Note**: You can create your own CSRF strategy by implementing the interface `CsrfStrategy`.
 
-Available Storages:
+### Available Storages
+
+The following classes are available:
 
 - `InSessionCsrfStorage`: uses PHP's `$_SESSION` to store the CSRF token in order to compare it later.
+    - Its constructor receives one optional argument, `$sessionKey` (string), which is the key stored in the `$_SESSION` variable. By default it is `csrf`.
 
 **Note**: You can create your own CSRF storage by implementing the interface `CsrfStorage`.
 
