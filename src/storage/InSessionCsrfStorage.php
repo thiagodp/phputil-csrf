@@ -28,7 +28,7 @@ class InSessionCsrfStorage implements CsrfStorage {
 
         $this->checkIfSessionIsActive( 'save' );
 
-        $_SESSION[ $this->sessionKey ] = $token->value;
+        $_SESSION[ $this->sessionKey ] = $token->getValue();
     }
 
     /** @inheritDoc */

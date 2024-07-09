@@ -27,7 +27,7 @@ class CookieBasedCsrfStrategy extends BaseCsrfStrategy {
         $this->cookieOptions = $cookieOptions;
     }
 
-    protected function getCookieName(): string {
+    public function getCookieName(): string {
         return $this->strategyOptions[ KEY__COOKIE_NAME ] ?? DEFAULT_COOKIE_NAME;
     }
 

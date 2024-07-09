@@ -57,15 +57,36 @@ abstract class BaseCsrfStrategy implements CsrfStrategy {
             throw new \LogicException( 'Please set the storage in the strategy.' );
         }
 
+        $options = $this->getOptions();
+        $storedToken = $this->storage->loadToken();
+
+        // No token is stored
+        if ( $storedToken === null ) {
+
+            // Generates a new token
+            $token = generateToken( $options->tokenLength );
+
+            // Stores the new token
+            $this->getStorage()->saveToken( new CsrfToken( $token ) );
+
+            // Mask the token before sending it
+            if ( ! $options->disableTokenMasking ) {
+                $token = maskToken( $token );
+            }
+
+            $this->setToken( $token, $res );
+            return;
+        }
+
         // Gets the token from the request
         $requestToken = $this->getToken( $req );
+
+        // No token in the request
         if ( $requestToken === null || $requestToken === '' ) {
             $res->status( 400 )->send( 'Please send the CSRF token.' );
             $stop = true;
             return;
         }
-
-        $options = $this->getOptions();
 
         // Unmask
         if ( ! $options->disableTokenMasking ) {
@@ -88,8 +109,7 @@ abstract class BaseCsrfStrategy implements CsrfStrategy {
         }
 
         // Compare to the stored one
-        $storedToken = $this->getStorage()->loadToken();
-        if ( $storedToken != $token ) {
+        if ( ! $storedToken->isEqualTo( $token ) ) {
             $res->status( 400 )->send( 'Invalid CSRF token.' );
             $stop = true;
             return;

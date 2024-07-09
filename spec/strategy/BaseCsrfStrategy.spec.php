@@ -2,8 +2,7 @@
 require_once 'vendor/autoload.php';
 
 use phputil\csrf\BaseCsrfStrategy;
-use phputil\csrf\CsrfStorage;
-use phputil\csrf\CsrfToken;
+use phputil\csrf\InMemoryCsrfStorage;
 use phputil\router\FakeHttpRequest;
 use phputil\router\FakeHttpResponse;
 use phputil\router\HttpRequest;
@@ -11,66 +10,70 @@ use phputil\router\HttpResponse;
 
 const BAD_REQUEST = 400;
 
-
-class FakeCsrfStorage implements CsrfStorage {
-
-    private string $value;
-
-    public function __construct( string $value = '' ) {
-        $this->value = $value;
-    }
-
-    public function loadToken(): ?CsrfToken {
-        return new CsrfToken( $this->value );
-    }
-
-    public function saveToken( CsrfToken $token ): void {
-        $this->value = $token->value;
-    }
-
-    public function removeToken(): bool {
-        return true;
-    }
-
-}
-
 describe( 'BaseCsrfStrategy', function() {
 
     it( 'throws an exception when the storage is not set', function() {
 
-        $obj = new class extends BaseCsrfStrategy {
-            public function getToken( HttpRequest $req): ?string {
+        $strategy = new class extends BaseCsrfStrategy {
+            public function getToken( HttpRequest $req ): ?string {
                 return null;
             }
-            public function setToken( string $token, HttpResponse $req): void {}
+            public function setToken( string $token, HttpResponse $req ): void {}
         };
 
-        expect( function() use ( $obj ) {
+        expect( function() use ( $strategy ) {
             $req = new FakeHttpRequest();
             $res = new FakeHttpResponse();
             $stop = false;
 
-            $obj->execute( $req, $res, $stop );
+            $strategy->execute( $req, $res, $stop );
         } )->toThrow();
+    } );
+
+    it( 'generates a new token when there is no stored token and no token is sent', function() {
+
+        $strategy = new class extends BaseCsrfStrategy {
+            public ?string $token = null; // No token sent
+            public function getToken( HttpRequest $req ): ?string {
+                return $this->token;
+            }
+            public function setToken( string $token, HttpResponse $req ): void {
+                $this->token = $token;
+            }
+        };
+
+        $strategy->setStorage( new InMemoryCsrfStorage() ); // No token stored
+
+        $req = new FakeHttpRequest();
+        $res = new FakeHttpResponse();
+        $stop = false;
+
+        $strategy->execute( $req, $res, $stop );
+
+        expect( $stop )->toBeFalsy();
+        expect( $res->isStatus( BAD_REQUEST ) )->toBeFalsy();
+
+        expect( $strategy->getToken( $req ) )->not->toBeNull();
     } );
 
     describe( 'sends a bad request when', function() {
 
-        it( 'receives no token', function() {
+        it( 'receives no token BUT there is a stored token', function() {
 
-            $obj = new class extends BaseCsrfStrategy {
-                public function getToken( HttpRequest $req): ?string {
-                    return null;
+            $strategy = new class extends BaseCsrfStrategy {
+                public function getToken( HttpRequest $req ): ?string {
+                    return null; // No token sent
                 }
-                public function setToken( string $token, HttpResponse $req): void {}
+                public function setToken( string $token, HttpResponse $req ): void {}
             };
-            $obj->setStorage( new FakeCsrfStorage() );
+
+            $strategy->setStorage( new InMemoryCsrfStorage( 'foo' ) ); // Stored token
 
             $req = new FakeHttpRequest();
             $res = new FakeHttpResponse();
             $stop = false;
 
-            $obj->execute( $req, $res, $stop );
+            $strategy->execute( $req, $res, $stop );
 
             expect( $stop )->toBeTruthy();
             expect( $res->isStatus( BAD_REQUEST ) )->toBeTruthy();
@@ -79,21 +82,21 @@ describe( 'BaseCsrfStrategy', function() {
 
         it( 'receives a token with an invalid size', function() {
 
-            $obj = new class extends BaseCsrfStrategy {
-                public function getToken( HttpRequest $req): ?string {
+            $strategy = new class extends BaseCsrfStrategy {
+                public function getToken( HttpRequest $req ): ?string {
                     return '123';
                 }
-                public function setToken( string $token, HttpResponse $req): void {}
+                public function setToken( string $token, HttpResponse $req ): void {}
             };
-            $obj->setStorage( new FakeCsrfStorage() );
 
-            $obj->getOptions()->disableTokenMasking = true; // Important to avoid changing the size
+            $strategy->setStorage( new InMemoryCsrfStorage( '123456' ) );
+            $strategy->getOptions()->disableTokenMasking = true; // Important to avoid changing the size
 
             $req = new FakeHttpRequest();
             $res = new FakeHttpResponse();
             $stop = false;
 
-            $obj->execute( $req, $res, $stop );
+            $strategy->execute( $req, $res, $stop );
 
             expect( $stop )->toBeTruthy();
             expect( $res->isStatus( BAD_REQUEST ) )->toBeTruthy();
@@ -105,22 +108,23 @@ describe( 'BaseCsrfStrategy', function() {
 
         it( 'receives a token with an invalid format', function() {
 
-            $obj = new class extends BaseCsrfStrategy {
-                public function getToken( HttpRequest $req): ?string {
+            $strategy = new class extends BaseCsrfStrategy {
+                public function getToken( HttpRequest $req ): ?string {
                     $token = '#' . str_repeat( '0', $this->getOptions()->tokenLength - 1 );
                     return $token;
                 }
-                public function setToken( string $token, HttpResponse $req): void {}
+                public function setToken( string $token, HttpResponse $req ): void {}
             };
-            $obj->setStorage( new FakeCsrfStorage() );
 
-            $obj->getOptions()->disableTokenMasking = true; // Important to avoid changing the size
+            $token = str_repeat( '0', $strategy->getOptions()->tokenLength );
+            $strategy->setStorage( new InMemoryCsrfStorage( $token ) );
+            $strategy->getOptions()->disableTokenMasking = true; // Important to avoid changing the size
 
             $req = new FakeHttpRequest();
             $res = new FakeHttpResponse();
             $stop = false;
 
-            $obj->execute( $req, $res, $stop );
+            $strategy->execute( $req, $res, $stop );
 
             expect( $stop )->toBeTruthy();
             expect( $res->isStatus( BAD_REQUEST ) )->toBeTruthy();
@@ -132,22 +136,22 @@ describe( 'BaseCsrfStrategy', function() {
 
         it( 'receives a token that differs from the stored one', function() {
 
-            $obj = new class extends BaseCsrfStrategy {
+            $strategy = new class extends BaseCsrfStrategy {
                 public function getToken( HttpRequest $req): ?string {
                     return 'bar';
                 }
                 public function setToken( string $token, HttpResponse $req): void {}
             };
-            $obj->setStorage( new FakeCsrfStorage( 'foo' ) );
 
-            $obj->getOptions()->tokenLength = 3;
-            $obj->getOptions()->disableTokenMasking = true; // Important to avoid changing the size
+            $strategy->setStorage( new InMemoryCsrfStorage( 'foo' ) );
+            $strategy->getOptions()->tokenLength = 3;
+            $strategy->getOptions()->disableTokenMasking = true; // Important to avoid changing the size
 
             $req = new FakeHttpRequest();
             $res = new FakeHttpResponse();
             $stop = false;
 
-            $obj->execute( $req, $res, $stop );
+            $strategy->execute( $req, $res, $stop );
 
             expect( $stop )->toBeTruthy();
             expect( $res->isStatus( BAD_REQUEST ) )->toBeTruthy();
@@ -161,22 +165,22 @@ describe( 'BaseCsrfStrategy', function() {
 
     it( 'does not return a bad request when tokens match', function() {
 
-        $obj = new class extends BaseCsrfStrategy {
+        $strategy = new class extends BaseCsrfStrategy {
             public function getToken( HttpRequest $req): ?string {
                 return 'foo';
             }
             public function setToken( string $token, HttpResponse $req): void {}
         };
-        $obj->setStorage( new FakeCsrfStorage( 'foo' ) );
 
-        $obj->getOptions()->tokenLength = 3;
-        $obj->getOptions()->disableTokenMasking = true; // Important to avoid changing the size
+        $strategy->setStorage( new InMemoryCsrfStorage( 'foo' ) );
+        $strategy->getOptions()->tokenLength = 3;
+        $strategy->getOptions()->disableTokenMasking = true; // Important to avoid changing the size
 
         $req = new FakeHttpRequest();
         $res = new FakeHttpResponse();
         $stop = false;
 
-        $obj->execute( $req, $res, $stop );
+        $strategy->execute( $req, $res, $stop );
 
         expect( $stop )->toBeFalsy();
         expect( $res->isStatus( BAD_REQUEST ) )->toBeFalsy();

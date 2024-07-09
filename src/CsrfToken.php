@@ -13,6 +13,14 @@ class CsrfToken {
         return preg_match( '/^[a-zA-Z0-9]+$/', $this->value );
     }
 
+    public function isEqualTo( CsrfToken $token ): bool {
+        return $token->value === $this->value;
+    }
+
+    public function getValue(): string {
+        return $this->value;
+    }
+
     public function __toString(): string {
         return $this->value;
     }
